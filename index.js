@@ -22,6 +22,53 @@ const db = mysql.createConnection(
     console.log(`Connected to the business_db database.`)
 );
 
+const idDepartment = (department) => {
+    db.query(`SELECT id FROM departments WHERE department_name = ?;`, department, function (err, results) {
+        return results;
+    });
+};
+
+// const idDepartment = (department) => {
+//     return new Promise((resolve, reject) => {
+//       db.query('SELECT id FROM departments WHERE department_name = ?;', department, function (err, results) {
+//         console.log(results);
+//         err ? reject(err) : resolve(results)
+//       });
+//     });
+// };
+
+const idRole = (role) => {
+    db.query(`SELECT id FROM roles WHERE title = ?;`, role, function(err, results) {
+        return results;
+    });
+};
+
+// const idRole = (role) => {
+//     return new Promise((resolve, reject) => {
+//       db.query('SELECT id FROM roles WHERE title = ?;', role, function (err, results) {
+//         console.log(results);
+//         err ? reject(err) : resolve(results)
+//       });
+//     });
+// };
+
+const idManager = (lastName) => {
+    db.query(`SELECT id FROM employees WHERE last_name = ?;`, lastName, function (err, results) {
+        console.log(lastName);
+        console.log(results);
+        return results;
+    });
+};
+
+// const idManager = (manager) => {
+//     return new Promise((resolve, reject) => {
+//       db.query('SELECT id FROM employees WHERE last_name = ?;', manager, function (err, results) {
+//         console.log(results);
+//         err ? reject(err) : resolve(results)
+//       });
+//     });
+// };
+
 const menu = () => {
     inquirer
     .prompt ([
@@ -32,61 +79,13 @@ const menu = () => {
             name: 'selection',
         }
     ])
-    .then ((response) => { 
-        // switch (response.selection) {
-        //     case 'View all departments':
-        //         displayTable('departments')
-        //         break
-        //     case 'View all roles':
-        //         displayTable('roles')
-        //         break
-        //     case 'View all employees':
-        //         displayTable('employees')
-        //         break
-        //     case 'Add a department':
-        //         addDepartment()
-        //         break
-        //     case 'Add a role':
-        //         addRole()
-        //         break
-        //     case 'Add an employee':
-        //         addEmployee()
-        //         break
-        //     case 'Update employee role':
-        //         updateRole()
-        //         break
-        //     default:
-        //         console.log('Please enter valid menu selection')
-        // }
-        // var choice = response.selection
-        // console.log(choice)
-        // if (response.selection === 'View all departments')
-        //     displayTable('departments')
-            
-        // else if (response.selection === 'View all roles')
-        //     displayTable('roles')
-            
-        // else if (response.selection === 'View all employees')
-        //     displayTable('employees')
-                
-        // else if (response.selection == 'Add a department')
-        //     addDepartment()
-                
-        // else if (response.selection === 'Add a role')
-        //     addRole()
-    
-        // else if (response.selection === 'Add an employee')
-        //     addEmployee()
-                
-        // else if (response.selection === 'Update employee role')
-        //     updateRole()
-                
-        // else
-        //     console.log('Please enter valid menu selection')
+    .then ((response) => {      
         queryRes(response.selection)
         //menu()
     })
 };
+
+menu();
 
 const queryRes = (response) => {
     if (response === 'View all departments')
@@ -107,28 +106,35 @@ const queryRes = (response) => {
     else if (response === 'Add an employee')
         addEmployee();
                 
-    else if (response === 'Update employee role')
+    else if (response === 'Update an employee role')
         updateRole();
                 
     else
         console.log('Please enter valid menu selection');
 
     
-}
-
-const displayTable = (tableName) => {
-    db.query(`SELECT * FROM ${tableName}`, function (err, results) {
-        console.log('\n\n');
-        console.table(`${tableName}`,results);
-        console.log('\n\n');
-    });
-    menu();
 };
 
+const displayTable = (tableName) => {
+    // db.query(`SELECT * FROM ${tableName}`, function (err, results) {
+    //     console.log('\n\n');
+    //     console.table(`${tableName}`,results);
+    //     console.log('\n\n');
+    // });
+    return new Promise((resolve, reject) => {
+      // Query database
+      db.query(`SELECT * FROM ${tableName}`, function (err, results) {
+        err ? reject(err) : resolve(console.table(results))
+        menu()
+      });
+    });
+    // menu();
+};
 
+//adds a department to the 'departments' table of the 'business_db' database
 const addDepartment = () => {
     inquirer
-    .prompt([
+    .prompt([ //asks user questions necessary to add a row to the 'departments' table of the 'business_db' database
         {
             type: 'input',
             message: 'Department Name:',
@@ -136,62 +142,169 @@ const addDepartment = () => {
         }
     ])
     .then ((response) => {
-        db.query(`INSERT INTO departments VALUE (${response.newDepartment})`, function (err, results) {
-            console.log('Department added...')
-            menu()
-        })
+        return new Promise((resolve, reject) => {
+            // Query database
+            db.query(`INSERT INTO departments (department_name) VALUE (?);`, response.newDepartment, function (err, results) {
+              err ? reject(err) : resolve('Department added...')
+              menu()
+            });
+          });
+        // db.query(`INSERT INTO departments (department_name) VALUE (?);`, response.newDepartment, function (err, results) {
+        //     console.log('Department added...')
+        //     menu()
+        // })
+    })
+};
+
+//adds a role to the 'roles' table of the 'business_db' database
+const addRole = async () => {
+    inquirer
+    .prompt([  //asks user questions necessary to add a row to the 'roles' table of the 'business_db' database
+        {
+            type: 'input',
+            message: 'Role Title:',
+            name: 'title',
+        },
+        {
+            type: 'input',
+            message: 'Salary: ',
+            name: 'salary',
+        },
+        {
+            type: 'input',
+            message: 'Department Name or ID:',
+            name: 'department',
+        }
+    ])
+    .then ((response) => {
+        var dep_id = response.department;
+        if (isNaN(response.id)) {
+            dep_id = idDepartment(response.id)
+        }
+        console.log(dep_id)
+        return new Promise((resolve, reject) => {
+            // Query database
+            db.query(`INSERT INTO roles (title, salary, department_id) VALUE (?,?,?);`, [response.title, response.salary, response.department], function (err, results) {
+              err ? reject(err) : resolve('Role added...')
+              menu()
+            });
+        });
+        // var dep_id = response.department;
+        // if (isNaN(response.id)) {
+        //     dep_id = idDepartment(response.id)
+        // }
+        // console.log(dep_id)
+        // db.query(`INSERT INTO roles (title, salary, department_id) VALUE (?,?,?);`, [response.title, response.salary, response.department], function (err, results) {
+        //     console.log('Role added...')
+        //     menu()
+        // })
+    })
+};
+
+//adds an employee to the 'employee' table of the 'business_db' database
+const addEmployee = async () => {
+    inquirer
+    .prompt([ //asks user questions necessary to add a row to the 'employee' table of the 'business_db' database
+        //first name, last name, role id, manager id
+        {
+            type: 'input',
+            message: 'First Name:',
+            name: 'firstName',
+        },
+        {
+            type: 'input',
+            message: 'Last Name:',
+            name: 'lastName',
+        },
+        {
+            type: 'input',
+            message: 'Role title or ID:',
+            name: 'role',
+        },
+        {
+            type: 'input',
+            message: "Manager's last name or ID:",
+            name: 'manager',
+        }
+    ])
+    .then ((response) => {
+        var roleID = response.role;
+        var managerID = response.manager;
+        if (isNaN(roleID)) {
+            roleID = idRole(roleID)
+        }
+        if (isNaN(managerID)) {
+            managerID = idManager(managerID)
+        }
+        console.log(roleID)
+        console.log(managerID)
+        return new Promise((resolve, reject) => {
+            // Query database
+            db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?);`, [response.firstName, response.lastName, roleID, managerID], function (err, results) {
+              err ? reject(err) : resolve('Employee added...')
+              menu()
+            });
+        });
+        // db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?);`, [response.firstName, response.lastName, roleID, managerID], function (err, results) {
+        //     console.log('Employee added...')
+        //     menu()
+        // })
     })
 };
 
 
-// const queryRes = (choice) => {
-//     switch (choice) {
-//         case 'View all departments': 
-//             //db query SELECT * FROM departments
-//             // Query database using COUNT() and GROUP BY
-//             db.query('SELECT * FROM departments', function (err, results) {
-//                 console.table(results);
-//             });
-//             break;
-        
-//         case 'View all roles':
-//             //db query SELECT * FROM roles
-//             // Query database using COUNT() and GROUP BY
-//             db.query('SELECT * FROM roles', function (err, results) {
-//                 console.table(results);
-//             });
-//             break;
-
-//         case 'View all employees':
-//             //db query SELECT * FROM employees
-//             db.query('SELECT * FROM employees', function (err, results) {
-//                 console.table(results);
-//             });
-//             break;
-
-//         case 'Add a department':
-//             //db query INSERT INTO deparments ()
-//             break;
-
-//         case 'Add a role':
-//             //db query INSERT INTO roles()
-//             break;
-
-//         case 'Add an employee':
-//             //db query INSERT INTO employees()
-//             break;
-
-//         case 'Update an employee role':
-//             //db query to change role in row of employee table
-//             break;
-
-//         default:
-//             console.log('Please enter a valid menu option');
-//     };
-// };
+const getEmployees = () => {
+    return new Promise((resolve, reject) => {
+      db.query('SELECT first_name, last_name FROM employees', function (err, results) {
+        console.log(results);
+        err ? reject(err) : resolve(results)
+      });
+    });
+};
 
 
-menu();
+const updateRole = async () => {
+    const employeeArr = await getEmployees();
+    let employeeChoices = [];
+    let employeeName = '';
+
+    console.log('employeeArr in updateRole(): ');
+    console.log(employeeArr);
+    for (var i = 0; i < employeeArr.length; i++) {
+        employeeName = employeeArr[i].first_name + ' ' + employeeArr[i].last_name;
+        //console.log(employeeName);
+        employeeChoices.push(employeeName);
+    }
+    console.log('employeeChoices:');
+    console.log(employeeChoices);
+    inquirer
+    .prompt([
+        {
+            type: 'list',
+            message: `Which employee's role would you like to update?`,
+            choices: employeeChoices,
+            name: 'employee',
+        },
+        {
+            type: 'input',
+            message: `Employee's new role title or ID:`,
+            name: 'newRole',
+        }
+    ])
+    .then((response) => {
+        var roleID = response.newRole
+        var empNum = employeeChoices.indexOf(response.employee)
+        if (isNaN(roleID)) {
+            roleID = idRole(roleID)
+        }
+        console.log('updating role...')
+        db.query(`UPDATE employees SET role_id = ? WHERE first_name = ? AND last_name = ?;`, [roleID, employeeArr[empNum].first_name, employeeArr[empNum].last_name], function (err, results) {
+            console.log('employee role updated')
+        })
+        menu()
+    })
+}
+
 
 app.use((req, res) => {
     res.status(404).end();
