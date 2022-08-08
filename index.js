@@ -53,7 +53,13 @@ const idRole = (role) => {
 // };
 
 const idManager = (lastName) => {
+    if (lastName == null) {
+        return 0;
+    }
     db.query(`SELECT id FROM employees WHERE last_name = ?;`, lastName, function (err, results) {
+        if (err) {
+            throw err;
+        }
         console.log(lastName);
         console.log(results);
         return results;
@@ -68,6 +74,39 @@ const idManager = (lastName) => {
 //       });
 //     });
 // };
+
+
+const displayDepartments = () => {
+    // department names and id
+    return new Promise((resolve, reject) => {
+        // Query database
+        db.query(`SELECT * FROM departments`, function (err, results) {
+          err ? reject(err) : resolve(console.table(results))
+          menu()
+        });
+      });
+}
+
+const displayRoles = () => {
+    // job title, role id, department name, salary
+    return new Promise((resolve, reject) => {
+        // Query database
+        db.query(`SELECT roles.id, roles.title AS job_title, departments.department_name AS department, roles.salary FROM roles JOIN departments ON roles.department_id = departments.id;`, function (err, results) {
+          err ? reject(err) : resolve(console.table(results))
+          menu()
+        });
+      });
+}
+
+const displayEmployees = () => {
+    return new Promise((resolve, reject) => {
+        // Query database
+        db.query(`SELECT A.id, A.first_name, A.last_name, C.title, D.department_name, C.salary, CONCAT(B.first_name, ' ', B.last_name) AS manager FROM employees A LEFT JOIN employees B ON A.manager_id = B.id JOIN roles C ON A.role_id = C.id JOIN departments D ON C.department_id = D.id;`, function (err, results) {
+          err ? reject(err) : resolve(console.table(results))
+          menu()
+        });
+    });
+}
 
 const menu = () => {
     inquirer
@@ -87,16 +126,16 @@ const menu = () => {
 
 menu();
 
-const queryRes = (response) => {
+const queryRes = async (response) => {
     if (response === 'View all departments')
-        displayTable('departments');
+        displayDepartments();
             
     else if (response === 'View all roles')
-        displayTable('roles');
+        displayRoles();
             
-    else if (response === 'View all employees')
-        displayTable('employees');
-                
+    else if (response === 'View all employees') 
+        displayEmployees();
+                        
     else if (response == 'Add a department')
         addDepartment();
                 
@@ -157,7 +196,7 @@ const addDepartment = () => {
 };
 
 //adds a role to the 'roles' table of the 'business_db' database
-const addRole = async () => {
+const addRole = () => {
     inquirer
     .prompt([  //asks user questions necessary to add a row to the 'roles' table of the 'business_db' database
         {
@@ -202,7 +241,7 @@ const addRole = async () => {
 };
 
 //adds an employee to the 'employee' table of the 'business_db' database
-const addEmployee = async () => {
+const addEmployee = () => {
     inquirer
     .prompt([ //asks user questions necessary to add a row to the 'employee' table of the 'business_db' database
         //first name, last name, role id, manager id
