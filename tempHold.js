@@ -2,8 +2,7 @@ const express = require('express');
 const inquirer = require('inquirer');
 const mysql = require('mysql2');
 const cTable = require('console.table');
-
-const dbAPI = require('./queries.js');
+//const ListPrompt = require('inquirer/lib/prompts/list');
 
 const PORT = process.env.PORT || 3001;
 const app = express();
@@ -23,13 +22,38 @@ const db = mysql.createConnection(
     console.log(`Connected to the business_db database.`)
 );
 
-const validateNum = async (num) => {
-    if (!isNaN(num)) {
-        return true;
-    }
-    else {
-        return 'Please enter a numeric value...';
-    }
+const getDepartments = () => {
+    return new Promise((resolve, reject) => {
+        db.query('SELECT * FROM departments;', function (err, results) {
+            err ? reject(err) : resolve(results)
+        });
+    });
+};
+
+const getRoles = () => {
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT * FROM roles;`, function (err, results) {
+            err ? reject(err) : resolve(results)
+        });
+    });
+};
+
+const getEmployees = () => {
+    return new Promise((resolve, reject) => {
+        db.query('SELECT * FROM employees;', function (err, results) {
+            err ? reject(err) : resolve(results)
+        });
+    });
+};
+
+const getManagers = () => {
+    return new Promise((resolve, reject) => {
+        db.query('SELECT * FROM employees WHERE manager_id IS NULL', function (err, results) {
+            err ? reject(err) : resolve(results)
+            console.log('getManagers')
+            console.log(results)
+        });
+    });
 };
 
 class EmployeeName {
@@ -57,24 +81,24 @@ class DepartmentInfo {
     }
 }
 
-// async function insertEmployee (firstName, lastName, roleID, managerID) {
-//     await dbAPI.addEmployee(firstName, lastName, roleID, managerID);
-// }
-
-async function getEmployeeNamesArr () {
-    const employeeArr = await dbAPI.getEmployees();
+async function getEmployeeNameArr () {
+    const employeeArr = await getEmployees();
     let employeeChoices = [];
     let employeeName = '';
 
+    //console.log('employeeArr in updateRole(): ');
+    //console.log(employeeArr);
     for (var i = 0; i < employeeArr.length; i++) {
         employeeName = new EmployeeName(employeeArr[i].id, employeeArr[i].first_name, employeeArr[i].last_name);
+        // employeeName = new EmployeeName(employeeArr[i].id, employeeArr[i].first_name, employeeArr[i].last_name;
+        //console.log(employeeName);
         employeeChoices.push(employeeName);
     }
     return employeeChoices;
 }
 
 async function getManagerNameArr () {
-    const managersArr = await dbAPI.getManagers();
+    const managersArr = await getManagers();
     let managerNames = [];
     let managerName = '';
 
@@ -86,7 +110,7 @@ async function getManagerNameArr () {
 }
 
 async function getRolesArr() {
-    const rolesArr = await dbAPI.getRoles();
+    const rolesArr = await getRoles();
     let titlesArr = [];
     let title = '';
 
@@ -101,7 +125,7 @@ async function getRolesArr() {
 }
 
 async function getDepartmentsArr () {
-    const deptArr = await dbAPI.getDepartments();
+    const deptArr = await getDepartments();
     let namesArr = [];
     let deptName = '';
 
@@ -112,6 +136,41 @@ async function getDepartmentsArr () {
     return namesArr;
 }
 
+
+const displayDepartments = () => {
+    // department names and id
+    return new Promise((resolve, reject) => {
+        // Query database
+        db.query(`SELECT * FROM departments`, function (err, results) {
+          err ? reject(err) : resolve(console.table(results))
+          console.log('displaying departments...')
+          menu()
+        });
+    });
+}
+
+const displayRoles = () => {
+    // job title, role id, department name, salary
+    return new Promise((resolve, reject) => {
+        // Query database
+        db.query(`SELECT roles.id, roles.title AS job_title, departments.department_name AS department, roles.salary FROM roles JOIN departments ON roles.department_id = departments.id ORDER BY (roles.id);`, function (err, results) {
+          err ? reject(err) : resolve(console.table(results))
+          console.log('displaying roles...')
+          menu()
+        });
+    });
+}
+
+const displayEmployees = () => {
+    return new Promise((resolve, reject) => {
+        // Query database
+        db.query(`SELECT A.id, A.first_name, A.last_name, C.title, D.department_name, C.salary, CONCAT(B.first_name, ' ', B.last_name) AS manager FROM employees A LEFT JOIN employees B ON A.manager_id = B.id JOIN roles C ON A.role_id = C.id JOIN departments D ON C.department_id = D.id ORDER BY (A.id);`, function (err, results) {
+          err ? reject(err) : resolve(console.table(results))
+          console.log('displaying employees...')
+          menu()
+        });
+    });
+};
 
 
 //adds a department to the 'departments' table of the 'business_db' database
@@ -125,8 +184,18 @@ const addDepartment = () => {
         }
     ])
     .then ((response) => {
-        dbAPI.addDepartment(response.newDepartment)
-        menu()
+            // db.query(`INSERT INTO departments (department_name) VALUE (?);`, response.newDepartment, function (err, results) {
+            //     if (err) throw err
+            //     console.log('adding department')
+            //     menu()
+            // })
+        return new Promise((resolve, reject) => {
+            // Query database
+            db.query(`INSERT INTO departments (department_name) VALUE (?);`, response.newDepartment, function (err, results) {
+                err ? reject(err) : resolve(console.log('department added'))
+                menu()
+            })
+        })
     })
 };
 
@@ -147,7 +216,6 @@ const addRole = async () => {
             type: 'input',
             message: 'Salary: ',
             name: 'salary',
-            validate: validateNum,
         },
         {
             type: 'list',
@@ -177,13 +245,9 @@ const addEmployee = async () => {
     rolesArr.forEach((role) => roleChoices.push(role.title));
 
     const managersArr = await getManagerNameArr();
-    console.log('managersArr:');
-    console.log(managersArr);
     let managerChoices = [];
     managersArr.forEach((manager) => managerChoices.push(manager.getName()));
     managerChoices.push('N/A');
-    console.log('managerChoices:');
-    console.log(managerChoices);
 
     inquirer
     .prompt([ //asks user questions necessary to add a row to the 'employee' table of the 'business_db' database
@@ -214,38 +278,25 @@ const addEmployee = async () => {
     .then ((response) => {
         var roleNum = roleChoices.indexOf(response.role)
         var managerID;
-        console.log('response.manager:')
-        console.log(response.manager)
-        if (!(response.manager == 'N/A')) {
-            console.log('managerID not null')
+        if (!response.manager == 'N/A') {
             var managerNum = managerChoices.indexOf(response.manager)
-            console.log('response.manager:')
-            console.log(response.manager)
-            console.log('managerNum:')
-            console.log(managerNum)
             managerID = managersArr[managerNum].id
         }
         
         console.log('adding employee...')
-        async function insertEmp() {
-            dbAPI.addEmployee(response.firstName, response.lastName, rolesArr[roleNum].id, managerID)
-            //menu()
-        }
-        insertEmp()
-        menu()
-        // return new Promise((resolve, reject) => {
-        //     // Query database
-        //     db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?);`, [response.firstName, response.lastName, rolesArr[roleNum].id, managerID], function (err, results) {
-        //         err ? reject(err) : resolve(console.log('employee added'))
-        //         menu()
-        //     })
-        // })
+        return new Promise((resolve, reject) => {
+            // Query database
+            db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?);`, [response.firstName, response.lastName, rolesArr[roleNum].id, managerID], function (err, results) {
+                err ? reject(err) : resolve(console.log('employee added'))
+                menu()
+            })
+        })
     })
 }
 
 
 const updateRole = async () => {
-    const employeeArr = await getEmployeeNamesArr();
+    const employeeArr = await getEmployeeNameArr();
     let employeeChoices = [];
     employeeArr.forEach((employee) => employeeChoices.push(employee.getName()));
 
@@ -304,18 +355,20 @@ menu();
 
 const queryRes = async (response) => {
     if (response === 'View all departments') {
-        await dbAPI.displayDepartments();
-        menu();
+        await displayDepartments();
     }
             
     else if (response === 'View all roles') {
-        await dbAPI.displayRoles();
-        menu();
+        await displayRoles();
     }
             
     else if (response === 'View all employees') {
-        await dbAPI.displayEmployees();
-        menu();
+        try {
+            displayEmployees();
+        }
+        catch (error) {
+            throw new Error ('employees could not be displayed');
+        }
     }
                         
     else if (response == 'Add a department') {
@@ -338,6 +391,7 @@ const queryRes = async (response) => {
     else if (response === 'Add an employee')
         try {
             addEmployee();
+            //menu();
         }
         catch (error) {
             throw new Error ('employee could not be added');
