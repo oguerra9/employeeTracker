@@ -24,6 +24,8 @@ const db = mysql.createConnection(
 
 const idDepartment = (department) => {
     db.query(`SELECT id FROM departments WHERE department_name = ?;`, department, function (err, results) {
+        console.log('idDepartment - should return department id number');
+        console.log(results);
         return results;
     });
 };
@@ -37,33 +39,59 @@ const idDepartment = (department) => {
 //     });
 // };
 
+// const idRole = (role) => {
+//     if (typeof role == 'number') {
+//         return role;
+//     }
+//     else {
+//         db.query(`SELECT id FROM roles WHERE title = ?;`, role, function(err, results) {
+//             if (err) {
+//                 throw err;
+//             }
+//             else {
+//                 console.log('idRole() - should return role id number');
+//                 console.log(results[0].id);
+//                 return results[0].id;
+//             }
+//         });
+//     }
+// };
+
 const idRole = (role) => {
-    db.query(`SELECT id FROM roles WHERE title = ?;`, role, function(err, results) {
-        return results;
+    return new Promise((resolve, reject) => {
+      db.query('SELECT id FROM roles WHERE title = ?;', role, function (err, results) {
+        console.log(results);
+        err ? reject(err) : resolve(results)
+      });
     });
 };
 
-// const idRole = (role) => {
-//     return new Promise((resolve, reject) => {
-//       db.query('SELECT id FROM roles WHERE title = ?;', role, function (err, results) {
-//         console.log(results);
-//         err ? reject(err) : resolve(results)
-//       });
-//     });
-// };
-
 const idManager = (lastName) => {
-    if (lastName == null) {
-        return 0;
+    if (typeof lastName == 'number') {
+        return lastName;
     }
-    db.query(`SELECT id FROM employees WHERE last_name = ?;`, lastName, function (err, results) {
-        if (err) {
-            throw err;
-        }
-        console.log(lastName);
-        console.log(results);
-        return results;
-    });
+    else {
+        const ret = db.query(`SELECT id FROM employees WHERE last_name = ?;`);
+        return ret;
+        // db.query(`SELECT id FROM employees WHERE last_name = ?;`, lastName, function (err, results) {
+        //     if (err) {
+        //         throw err;
+        //     }
+        //     else {
+        //         console.log(lastName);
+        //         console.log('idManager - should return manager id number');
+        //         console.log("results:");
+        //         console.log(results);
+        //         console.log("results[0]:");
+        //         console.log(results[0]);
+        //         console.log("results.id:");
+        //         console.log(results.id);
+        //         console.log("results[0].id:");
+        //         console.log(results[0].id);
+        //         return results[0].id;
+        //     }
+        // });
+    }
 };
 
 // const idManager = (manager) => {
@@ -91,7 +119,7 @@ const displayRoles = () => {
     // job title, role id, department name, salary
     return new Promise((resolve, reject) => {
         // Query database
-        db.query(`SELECT roles.id, roles.title AS job_title, departments.department_name AS department, roles.salary FROM roles JOIN departments ON roles.department_id = departments.id;`, function (err, results) {
+        db.query(`SELECT roles.id, roles.title AS job_title, departments.department_name AS department, roles.salary FROM roles JOIN departments ON roles.department_id = departments.id ORDER BY (roles.id);`, function (err, results) {
           err ? reject(err) : resolve(console.table(results))
           menu()
         });
@@ -101,7 +129,7 @@ const displayRoles = () => {
 const displayEmployees = () => {
     return new Promise((resolve, reject) => {
         // Query database
-        db.query(`SELECT A.id, A.first_name, A.last_name, C.title, D.department_name, C.salary, CONCAT(B.first_name, ' ', B.last_name) AS manager FROM employees A LEFT JOIN employees B ON A.manager_id = B.id JOIN roles C ON A.role_id = C.id JOIN departments D ON C.department_id = D.id;`, function (err, results) {
+        db.query(`SELECT A.id, A.first_name, A.last_name, C.title, D.department_name, C.salary, CONCAT(B.first_name, ' ', B.last_name) AS manager FROM employees A LEFT JOIN employees B ON A.manager_id = B.id JOIN roles C ON A.role_id = C.id JOIN departments D ON C.department_id = D.id ORDER BY (A.id);`, function (err, results) {
           err ? reject(err) : resolve(console.table(results))
           menu()
         });
@@ -128,13 +156,13 @@ menu();
 
 const queryRes = async (response) => {
     if (response === 'View all departments')
-        displayDepartments();
+        await displayDepartments();
             
     else if (response === 'View all roles')
-        displayRoles();
+        await displayRoles();
             
     else if (response === 'View all employees') 
-        displayEmployees();
+        await displayEmployees();
                         
     else if (response == 'Add a department')
         addDepartment();
@@ -220,14 +248,13 @@ const addRole = () => {
         if (isNaN(response.id)) {
             dep_id = idDepartment(response.id)
         }
-        console.log(dep_id)
         return new Promise((resolve, reject) => {
             // Query database
             db.query(`INSERT INTO roles (title, salary, department_id) VALUE (?,?,?);`, [response.title, response.salary, response.department], function (err, results) {
               err ? reject(err) : resolve('Role added...')
               menu()
-            });
-        });
+            })
+        })
         // var dep_id = response.department;
         // if (isNaN(response.id)) {
         //     dep_id = idDepartment(response.id)
@@ -239,6 +266,11 @@ const addRole = () => {
         // })
     })
 };
+
+const getRoleID = async (roleName) => {
+    const roleNum = await idRole(roleName);
+    return roleNum;
+}
 
 //adds an employee to the 'employee' table of the 'business_db' database
 const addEmployee = () => {
@@ -267,23 +299,41 @@ const addEmployee = () => {
         }
     ])
     .then ((response) => {
-        var roleID = response.role;
-        var managerID = response.manager;
-        if (isNaN(roleID)) {
-            roleID = idRole(roleID)
-        }
-        if (isNaN(managerID)) {
-            managerID = idManager(managerID)
-        }
-        console.log(roleID)
-        console.log(managerID)
+        // var roleID = response.role;
+        // var managerID = response.manager;
+        // console.log(roleID)
+        // console.log(managerID)
+        // if (isNaN(response.role)) {
+        //     roleID = idRole(response.role)
+        //     // if (typeof roleID === 'undefined' || roleID == null) {
+        //     //     throw Error ('role not found')
+        //     // }
+        // }
+        // if (isNaN(response.manager)) {
+        //     managerID = idManager(response.manager)
+        //     // if (typeof managerID === 'undefined' || managerID == null) {
+        //     //     throw new Error ('manager not found')
+        //     // }
+        // }
+        console.log('role id inside addEmployee')
+        console.log(getRoleID(response.role))
+        console.log(await (idRole(response.role)))
+        console.log('manager id inside addEmployee')
+        console.log(idManager(response.manager))
         return new Promise((resolve, reject) => {
             // Query database
-            db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?);`, [response.firstName, response.lastName, roleID, managerID], function (err, results) {
+            db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?);`, [response.firstName, response.lastName, idRole(response.role), idManager(response.manager)], function (err, results) {
               err ? reject(err) : resolve('Employee added...')
               menu()
-            });
-        });
+            })
+        })
+        // return new Promise((resolve, reject) => {
+        //     // Query database
+        //     db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?);`, [response.firstName, response.lastName, roleID, managerID], function (err, results) {
+        //       err ? reject(err) : resolve('Employee added...')
+        //       menu()
+        //     })
+        // })
         // db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?);`, [response.firstName, response.lastName, roleID, managerID], function (err, results) {
         //     console.log('Employee added...')
         //     menu()
@@ -300,6 +350,19 @@ const getEmployees = () => {
       });
     });
 };
+
+app.get('/api/employees', async (req, res) => {
+
+    try {
+      //dowork 
+      const data = await getCourses();
+      //output
+      res.status(200).json(data)
+    } catch (error) {
+      res.status(500).json(error)
+    }
+  
+  });
 
 
 const updateRole = async () => {
