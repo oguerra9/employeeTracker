@@ -90,6 +90,24 @@ dbAPI.displayEmployees = async () => {
     });
 }
 
+dbAPI.addDepartment = async (deptName) => {
+    return new Promise((resolve, reject) => {
+        db.query(`INSERT INTO departments (department_name) VALUE (?);`, deptName, function (err, results) {
+            err ? reject(err) : resolve(console.log('department added'))
+        })
+    })
+}
+
+dbAPI.addRole = async (title, salary, deptID) => {
+    return new Promise((resolve, reject) => {
+        // Query database
+        db.query(`INSERT INTO roles (title, salary, department_id) VALUE (?,?,?);`, [title, salary, deptID], function (err, results) {
+            err ? reject(err) : resolve(console.log('role added'))
+            //menu()
+        })
+    })
+}
+
 dbAPI.addEmployee = async (firstName, lastName, roleID, managerID) => {
     return new Promise((resolve, reject) => {
         // Query database
@@ -98,6 +116,17 @@ dbAPI.addEmployee = async (firstName, lastName, roleID, managerID) => {
             
         });
     });
+}
+
+
+dbAPI.updateRole = async(roleID, employeeID) => {
+    return new Promise((resolve, reject) => {
+        // Query database
+        db.query(`UPDATE employees SET role_id = ? WHERE id = ?;`, [roleID, employeeID], function (err, results) {
+            err ? reject(err) : resolve(console.log('employee role updated'))
+            //menu()
+        })
+    })
 }
 
 module.exports = dbAPI;

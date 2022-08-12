@@ -124,8 +124,8 @@ const addDepartment = () => {
             name: 'newDepartment',
         }
     ])
-    .then ((response) => {
-        dbAPI.addDepartment(response.newDepartment)
+    .then (async function (response) {
+        await dbAPI.addDepartment(response.newDepartment)
         menu()
     })
 };
@@ -159,13 +159,8 @@ const addRole = async () => {
     .then ((response) => {
         var deptNum = deptChoices.indexOf(response.department)        
         console.log('adding role...')
-        return new Promise((resolve, reject) => {
-            // Query database
-            db.query(`INSERT INTO roles (title, salary, department_id) VALUE (?,?,?);`, [response.title, response.salary, deptArr[deptNum].id], function (err, results) {
-                err ? reject(err) : resolve(console.log('role added'))
-                menu()
-            })
-        })
+        dbAPI.addRole(response.title, response.salary, deptArr[deptNum].id)
+        menu()
     })
 };
 
@@ -211,7 +206,7 @@ const addEmployee = async () => {
             name: 'manager',
         }
     ])
-    .then ((response) => {
+    .then (async function(response) {
         var roleNum = roleChoices.indexOf(response.role)
         var managerID;
         console.log('response.manager:')
@@ -225,21 +220,9 @@ const addEmployee = async () => {
             console.log(managerNum)
             managerID = managersArr[managerNum].id
         }
-        
         console.log('adding employee...')
-        async function insertEmp() {
-            dbAPI.addEmployee(response.firstName, response.lastName, rolesArr[roleNum].id, managerID)
-            //menu()
-        }
-        insertEmp()
+        await dbAPI.addEmployee(response.firstName, response.lastName, rolesArr[roleNum].id, managerID)
         menu()
-        // return new Promise((resolve, reject) => {
-        //     // Query database
-        //     db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?);`, [response.firstName, response.lastName, rolesArr[roleNum].id, managerID], function (err, results) {
-        //         err ? reject(err) : resolve(console.log('employee added'))
-        //         menu()
-        //     })
-        // })
     })
 }
 
@@ -270,17 +253,12 @@ const updateRole = async () => {
             name: 'newRole',
         }
     ])
-    .then((response) => {
+    .then(async function (response)  {
         var empNum = employeeChoices.indexOf(response.employee)
         var roleNum = roleChoices.indexOf(response.newRole)
         console.log('updating role...')
-        return new Promise((resolve, reject) => {
-            // Query database
-            db.query(`UPDATE employees SET role_id = ? WHERE id = ?;`, [rolesArr[roleNum].id, employeeArr[empNum].id], function (err, results) {
-                err ? reject(err) : resolve(console.log('employee role updated'))
-                menu()
-            })
-        })
+        await dbAPI.updateRole(rolesArr[roleNum].id, employeeArr[empNum].id)
+        menu()
     })
 }
 
