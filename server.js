@@ -11,15 +11,17 @@ const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
+//checks that the value of 'num' is an integer
 const validateNum = async (num) => {
     if (!isNaN(num)) {
         return true;
     }
-    else {
+    else { //if the entered value is not an integer, the message is returned and the user cannot move on to the next prompt until a numeric value has beeen entered
         return 'Please enter a numeric value...';
     }
 };
 
+//defines an simple employee object to make listing available employee's names more simple
 class EmployeeName {
     constructor (id, firstName, lastName) {
         this.id = id;
@@ -31,6 +33,7 @@ class EmployeeName {
     }
 }
 
+//creates an object to make displaying available roles more simplistic
 class SimpleRole {
     constructor (id, title) {
         this.id = id;
@@ -38,6 +41,7 @@ class SimpleRole {
     }
 }  
 
+//creates an object to make displaying departments as a list more simple
 class DepartmentInfo {
     constructor (id, name) {
         this.id = id;
@@ -45,10 +49,7 @@ class DepartmentInfo {
     }
 }
 
-// async function insertEmployee (firstName, lastName, roleID, managerID) {
-//     await dbAPI.addEmployee(firstName, lastName, roleID, managerID);
-// }
-
+//creates an array containing a list of names of current employees in the employees table of the database
 async function getEmployeeNamesArr () {
     const employeeArr = await dbAPI.getEmployees();
     let employeeChoices = [];
@@ -61,6 +62,7 @@ async function getEmployeeNamesArr () {
     return employeeChoices;
 }
 
+//creates an array of manager names from the employees table of the database
 async function getManagerNameArr () {
     const managersArr = await dbAPI.getManagers();
     let managerNames = [];
@@ -73,6 +75,7 @@ async function getManagerNameArr () {
     return managerNames;
 }
 
+//creates an array of role titles from the roles table of the database
 async function getRolesArr() {
     const rolesArr = await dbAPI.getRoles();
     let titlesArr = [];
@@ -84,6 +87,7 @@ async function getRolesArr() {
     return titlesArr;
 }
 
+//creates an array of department names from the departments table of the database
 async function getDepartmentsArr () {
     const deptArr = await dbAPI.getDepartments();
     let namesArr = [];
@@ -141,6 +145,7 @@ const addRole = async () => {
         }
     ])
     .then ((response) => {
+        //gets the number of the department selection made i order to obtain the correct department's id
         var deptNum = deptChoices.indexOf(response.department)        
         console.log('adding role...')
         dbAPI.addRole(response.title, response.salary, deptArr[deptNum].id)
@@ -153,11 +158,14 @@ const addRole = async () => {
 const addEmployee = async () => {
     const rolesArr = await getRolesArr();
     let roleChoices = [];
+    //creates an array of possibel role choices to be displayed
     rolesArr.forEach((role) => roleChoices.push(role.title));
 
     const managersArr = await getManagerNameArr();
     let managerChoices = [];
+    //creates an array of possible manager choices to be displayed
     managersArr.forEach((manager) => managerChoices.push(manager.getName()));
+    //add 'N/A' to the list of choiceds in the event that the employee being added is a manager themselves and does not have a manager above them
     managerChoices.push('N/A');
 
     inquirer
@@ -187,26 +195,35 @@ const addEmployee = async () => {
         }
     ])
     .then (async function(response) {
+        //gets the index of the selected role
         var roleNum = roleChoices.indexOf(response.role)
+        //declares but does not define the manager id variable in order to set the new employees managerid to null in the even 'N/A' was selected
         var managerID;
         if (!(response.manager == 'N/A')) {
+            //if 'N/A' was not selected and the new employee has a manager, the index of the selection is found
             var managerNum = managerChoices.indexOf(response.manager)
+            //the id of the manager is obtained by getting the id of the manager selected
             managerID = managersArr[managerNum].id
         }
         console.log('adding employee...')
+        //the employee is added to the employees table of the database
         await dbAPI.addEmployee(response.firstName, response.lastName, rolesArr[roleNum].id, managerID)
         menu()
     })
 }
 
-
+//updates the role of an employee 
 const updateRole = async () => {
+    //gets an array of employee obects including their names and ids
     const employeeArr = await getEmployeeNamesArr();
     let employeeChoices = [];
+    //creates an array of employees to choose from
     employeeArr.forEach((employee) => employeeChoices.push(employee.getName()));
 
+    //gets an array of role objects including their titles and ids
     const rolesArr = await getRolesArr();
     let roleChoices = [];
+    //creates an array of roles to choose from
     rolesArr.forEach((role) => roleChoices.push(role.title));
 
     inquirer
@@ -225,15 +242,18 @@ const updateRole = async () => {
         }
     ])
     .then(async function (response)  {
+        //finds the index of the selected employee in the array of employee choices
         var empNum = employeeChoices.indexOf(response.employee)
+        //finds the index of the selected role in the array of role choices
         var roleNum = roleChoices.indexOf(response.newRole)
         console.log('updating role...')
+        //updates the employee's role
         await dbAPI.updateRole(rolesArr[roleNum].id, employeeArr[empNum].id)
         menu()
     })
 }
 
-
+//displays the app's main menu
 const menu = () => {
     inquirer
     .prompt ([
@@ -244,69 +264,64 @@ const menu = () => {
             name: 'selection',
         }
     ])
-    .then ((response) => {      
-        queryRes(response.selection)
+    .then (async function (response)  {  
+        //calls the appropriate function for each menu option    
+        if (response.selection === 'View all departments') {
+            await dbAPI.displayDepartments();
+            menu();
+        }
+                
+        else if (response.selection === 'View all roles') {
+            await dbAPI.displayRoles();
+            menu();
+        }
+                
+        else if (response.selection === 'View all employees') {
+            await dbAPI.displayEmployees();
+            menu();
+        }
+                            
+        else if (response.selection == 'Add a department') {
+            try {
+                addDepartment();
+            }
+            catch (error) {
+                throw new Error ('department could not be added');
+            }
+        }
+                    
+        else if (response.selection === 'Add a role')
+            try {
+                addRole();
+            }
+            catch (error) {
+                throw new Error ('role could not be added');
+            }
+        
+        else if (response.selection === 'Add an employee')
+            try {
+                addEmployee();
+            }
+            catch (error) {
+                throw new Error ('employee could not be added');
+            }
+                    
+        else if (response.selection === 'Update an employee role') {
+            try {
+                updateRole();
+                //menu();
+            }
+            catch (error) {
+                throw new Error ('role could not be updated');
+            }
+        }
+                            
+        else
+            console.log('Please enter valid menu selection');
     })
 };
 
 menu();
-
-const queryRes = async (response) => {
-    if (response === 'View all departments') {
-        await dbAPI.displayDepartments();
-        menu();
-    }
-            
-    else if (response === 'View all roles') {
-        await dbAPI.displayRoles();
-        menu();
-    }
-            
-    else if (response === 'View all employees') {
-        await dbAPI.displayEmployees();
-        menu();
-    }
-                        
-    else if (response == 'Add a department') {
-        try {
-            addDepartment();
-        }
-        catch (error) {
-            throw new Error ('department could not be added');
-        }
-    }
-                
-    else if (response === 'Add a role')
-        try {
-            addRole();
-        }
-        catch (error) {
-            throw new Error ('role could not be added');
-        }
-    
-    else if (response === 'Add an employee')
-        try {
-            addEmployee();
-        }
-        catch (error) {
-            throw new Error ('employee could not be added');
-        }
-                
-    else if (response === 'Update an employee role') {
-        try {
-            updateRole();
-            //menu();
-        }
-        catch (error) {
-            throw new Error ('role could not be updated');
-        }
-    }
-                        
-    else
-        console.log('Please enter valid menu selection');
-
-    
-};
 
 app.use((req, res) => {
     res.status(404).end();
