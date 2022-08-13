@@ -11,18 +11,6 @@ const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-const db = mysql.createConnection(
-    {
-        host: 'localhost',
-        //MySQL username
-        user: 'root',
-        //MySQL password
-        password: 'kingEddy',
-        database: 'business_db'
-    },
-    console.log(`Connected to the business_db database.`)
-);
-
 const validateNum = async (num) => {
     if (!isNaN(num)) {
         return true;
@@ -88,15 +76,11 @@ async function getManagerNameArr () {
 async function getRolesArr() {
     const rolesArr = await dbAPI.getRoles();
     let titlesArr = [];
-    let title = '';
-
-    console.log(rolesArr);
-    
+    let title = '';   
     for (var i = 0; i < rolesArr.length; i++) {
         title = new SimpleRole(rolesArr[i].id, rolesArr[i].title);
         titlesArr.push(title);
     }
-    console.log(titlesArr);
     return titlesArr;
 }
 
@@ -172,13 +156,9 @@ const addEmployee = async () => {
     rolesArr.forEach((role) => roleChoices.push(role.title));
 
     const managersArr = await getManagerNameArr();
-    console.log('managersArr:');
-    console.log(managersArr);
     let managerChoices = [];
     managersArr.forEach((manager) => managerChoices.push(manager.getName()));
     managerChoices.push('N/A');
-    console.log('managerChoices:');
-    console.log(managerChoices);
 
     inquirer
     .prompt([ //asks user questions necessary to add a row to the 'employee' table of the 'business_db' database
@@ -209,15 +189,8 @@ const addEmployee = async () => {
     .then (async function(response) {
         var roleNum = roleChoices.indexOf(response.role)
         var managerID;
-        console.log('response.manager:')
-        console.log(response.manager)
         if (!(response.manager == 'N/A')) {
-            console.log('managerID not null')
             var managerNum = managerChoices.indexOf(response.manager)
-            console.log('response.manager:')
-            console.log(response.manager)
-            console.log('managerNum:')
-            console.log(managerNum)
             managerID = managersArr[managerNum].id
         }
         console.log('adding employee...')
@@ -233,8 +206,6 @@ const updateRole = async () => {
     employeeArr.forEach((employee) => employeeChoices.push(employee.getName()));
 
     const rolesArr = await getRolesArr();
-    console.log('rolesArr');
-    console.log(rolesArr);
     let roleChoices = [];
     rolesArr.forEach((role) => roleChoices.push(role.title));
 
@@ -342,5 +313,5 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`\nServer running on port ${PORT}\n`);
 });
